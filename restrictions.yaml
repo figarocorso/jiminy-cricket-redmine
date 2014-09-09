@@ -19,61 +19,61 @@
 issue:
     In-Progress-Non-Updated:
         constraints:
-            - status:
+            status:
                 component: name
                 component-type: string
                 value: In Progress
                 operation: equal
-            - updated_on:
+            updated_on:
                 component: none
                 component-type: date
                 value: 1440 # 24 hours
                 operation: interval
         actions:
-            - classify: Alert
-            - message: Ticket in progress not updated after 24 hours
+            classify: Alert
+            message: Ticket in progress not updated after 24 hours
 
     Unchanged-Ticket:
         constraints:
-            - updated_on:
+            updated_on:
                 component: none
                 component-type: date
                 value: 86400 # two months
                 operation: interval
         actions:
-            - classify: Warning
-            - message: Ticket unchanged after two months
+            classify: Warning
+            message: Ticket unchanged after two months
 
     Suport-Tickets:
         constraints:
-            - subject:
+            subject:
                 component: none
                 component-type: string
                 value: "[support]"
                 operation: contain
         actions:
-            - classify: Support
-            - message: Support tickets
+            classify: Support
+            message: Support tickets
 
 developer:
     Developer-With-Many-WIP-Tickets:
-        contraints:
-            - work-in-progress:
+        constraints:
+            work-in-progress:
                 component: none
                 component-type: number
                 value: 5
                 operation: less
         actions:
-            - classify: Alert
-            - message: Developers with more than 3 'In Progress' tasks
+            classify: Alert
+            message: Developers with more than 3 'In Progress' tasks
 
     Developer-Non-Updating-After-Two-Days:
-        contraints:
-            - last-update:
+        constraints:
+            last-update:
                 component: none
                 component-type: date
                 value: 2880 # 48 hours
                 operation: interval
         actions:
-            - classify: Alert
-            - message: Developers without updating any ticket after two days
+            classify: Alert
+            message: Developers without updating any ticket after two days
