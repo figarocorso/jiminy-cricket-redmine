@@ -1,0 +1,30 @@
+# component-types and operations
+# ==============================
+# string:
+#   equal => value == fieldString
+#
+# date:
+#   interval => nowDate - fieldDate >= value
+#
+# actions
+# =======
+# classify: error level (Alert, Warning, Notice)
+# message: text shown with the found ticket
+#
+
+In-Progress-Non-Updated:
+    constraints:
+        - status:
+            component: name
+            component-type: string
+            value: In Progress
+            operation: equal
+        - updated_on:
+            component: none
+            component-type: date
+            value: 1440
+            operation: interval
+
+    actions:
+        - classify: Alert
+        - message: Ticket in progress not updated after 24 hours
