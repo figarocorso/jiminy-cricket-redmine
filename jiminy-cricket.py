@@ -1,8 +1,18 @@
 #!/usr/bin/python
 
+import sys
+
 import yaml
 import json
 import requests
+
+import string_operations
+import number_operations
+import date_operations
+
+sys.modules['string_operations'] = string_operations
+sys.modules['number_operations'] = number_operations
+sys.modules['date_operations'] = date_operations
 
 # Debug variables
 debug = True
@@ -18,16 +28,34 @@ url_prefix = "https://projects.zentyal.com/"
 
 # Helpers
 def load_restrictions(path):
-    with file(path, 'r') as stream:
+    with open(path, 'r') as stream:
         return yaml.load(stream)
 
-def get(issue, component):
-    return issue[component] if component in issue else "None"
+def get(dictionary, component):
+    return dictionary[component] if component in dictionary else "None"
 
 
-# Second level functions
+# Second level functions (and further)
+def check_constraint(component_type, operation, limit, value):
+    module = component_type + '_operations'
+    function = component_type + '_' + operation
+
+    return getattr(sys.modules[module], function)(value, limit)
+
 def issue_has_to_be_shown(issue, constraints):
-    return True
+    result = True
+
+    for field, checkings in constraints.iteritems():
+        field_value = get(issue, field)
+        if ('component' in checkings) and (checkings['component'].lower() != 'none'):
+            field_value = get(field_value, checkings['component'])
+
+        result = result and check_constraint(get(checkings, 'component-type'),
+                                            get(checkings, 'operation'),
+                                            get(checkings, 'value'),
+                                            field_value)
+
+    return result
 
 def cataloge_issue(issue, actions):
     result = {}
@@ -51,9 +79,9 @@ def process_issue(issue, restrictions):
     return result
 
 def merge_results(result, results):
-    classify = result['classify']
+    classify = get(result, 'classify')
     result.pop('classify', None)
-    message = result['message']
+    message = get(result, 'message')
     result.pop('message', None)
 
     if classify not in results:
@@ -67,7 +95,7 @@ def merge_results(result, results):
 
 # Main program
 if debug:
-    with file(issues_file, 'r') as stream:
+    with open(issues_file, 'r') as stream:
         issues = json.load(stream)['issues']
 # TODO: Gather R&D projects issues using requests.get
 
@@ -76,6 +104,12 @@ restrictions = load_restrictions(restrictions_file)
 results = {}
 for issue in issues:
     result = process_issue(issue, restrictions['issue'])
-    merge_results(result, results)
+    if result:
+        merge_results(result, results)
 
-print results
+for priority, prioritized_results in results.iteritems():
+    print priority
+    for set_name, set_results in prioritized_results.iteritems():
+        print "  " + set_name
+        for result in set_results:
+            print '    ' + get(result, 'subject') + ' (' + get(result, 'url') + ')'
