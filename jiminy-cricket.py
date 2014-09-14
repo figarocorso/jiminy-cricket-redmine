@@ -2,9 +2,11 @@
 
 import sys
 
-import yaml
+import argparse
+import argcomplete
 import json
 import requests
+import yaml
 
 import string_operations
 import number_operations
@@ -15,7 +17,6 @@ sys.modules['number_operations'] = number_operations
 sys.modules['date_operations'] = date_operations
 
 # Debug variables
-debug = True
 issues_file = 'mocks/issues.json'
 
 # Redmine credentials
@@ -93,23 +94,35 @@ def merge_results(result, results):
     results[classify][message].append(result)
 
 
-# Main program
-if debug:
-    with open(issues_file, 'r') as stream:
-        issues = json.load(stream)['issues']
-# TODO: Gather R&D projects issues using requests.get
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Jiminy Cricket will parse Zentyal internal issues tracker and analyze it following the rules written in the file restrictions.yaml')
 
-restrictions = load_restrictions(restrictions_file)
+    parser.add_argument('-d', '--debug', help="Instead of requesting the info from the Redmine server, we take it from JSON files.", action='store_true')
 
-results = {}
-for issue in issues:
-    result = process_issue(issue, restrictions['issue'])
-    if result:
-        merge_results(result, results)
+    subparsers = parser.add_subparsers(title="Analysis depth", dest="depth")
+    quick_parser = subparsers.add_parser('quick', help="The fastest analysis, only a quick review taking the 'issue' restrictions")
+    developer_parser = subparsers.add_parser('developer', help="Deeper analysis of each ticket. Also includes 'developer' retrictions. This option takes much longer")
 
-for priority, prioritized_results in results.iteritems():
-    print priority
-    for set_name, set_results in prioritized_results.iteritems():
-        print "  " + set_name
-        for result in set_results:
-            print '    ' + get(result, 'subject') + ' (' + get(result, 'url') + ')'
+    args = parser.parse_args()
+    argcomplete.autocomplete(parser)
+
+    issues = []
+    if args.debug:
+        with open(issues_file, 'r') as stream:
+            issues = json.load(stream)['issues']
+
+    # TODO: Gather R&D projects issues using requests.get
+    restrictions = load_restrictions(restrictions_file)
+
+    results = {}
+    for issue in issues:
+        result = process_issue(issue, restrictions['issue'])
+        if result:
+            merge_results(result, results)
+
+    for priority, prioritized_results in results.iteritems():
+        print priority
+        for set_name, set_results in prioritized_results.iteritems():
+            print "  " + set_name
+            for result in set_results:
+                print '    ' + get(result, 'subject') + ' (' + get(result, 'url') + ')'
