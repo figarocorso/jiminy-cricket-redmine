@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# PYTHON_ARGCOMPLETE_OK
 
 import sys
 
@@ -18,6 +19,7 @@ sys.modules['date_operations'] = date_operations
 
 # Debug variables
 issues_file = 'mocks/issues.json'
+detailed_issues_file = 'mocks/detailed-issues.json'
 
 # Redmine credentials
 username = "" # your api key
@@ -26,6 +28,7 @@ password = "" # not used, could be random
 # Other variables
 restrictions_file = "restrictions.yaml"
 url_prefix = "https://projects.zentyal.com/"
+in_progress_status = 'In Progress'
 
 # Helpers
 def load_restrictions(path):
@@ -79,6 +82,35 @@ def process_issue(issue, restrictions):
 
     return result
 
+def process_detailed_issue(issue, developers):
+    name = ""
+
+    if 'assigned_to' in issue:
+        name = issue['assigned_to']['name']
+
+    if (name) and (name not in developers):
+        developers[name] = {}
+
+    if ('status' in issue) and (issue['status']['name'] == in_progress_status):
+        if 'work-in-progress' not in developers[name]:
+            developers[name]['work-in-progress'] = 0
+
+        developers[name]['work-in-progress'] += 1
+
+    if 'journals' in issue:
+        for journal in issue['journals']:
+            name = journal['user']['name']
+            if name not in developers:
+                developers[name] = {}
+
+            if 'last-update' not in developers[name]:
+                developers[name]['last-update'] = journal['created_on']
+
+            if developers[name]['last-update'] < journal['created_on']:
+                developers[name]['last-update'] = journal['created_on']
+
+
+
 def merge_results(result, results):
     classify = get(result, 'classify')
     result.pop('classify', None)
@@ -110,6 +142,8 @@ if __name__ == "__main__":
     if args.debug:
         with open(issues_file, 'r') as stream:
             issues = json.load(stream)['issues']
+        with open(detailed_issues_file, 'r') as stream:
+            detailed_issues = json.load(stream)
 
     # TODO: Gather R&D projects issues using requests.get
     restrictions = load_restrictions(restrictions_file)
@@ -119,6 +153,16 @@ if __name__ == "__main__":
         result = process_issue(issue, restrictions['issue'])
         if result:
             merge_results(result, results)
+
+    if 'developer' in args.depth:
+        developers = {}
+        for detailed_issue in detailed_issues:
+            process_detailed_issue(detailed_issue['issue'], developers)
+
+    for developer, details in developers.iteritems():
+        print developer
+        print details
+        print
 
     for priority, prioritized_results in results.iteritems():
         print priority
